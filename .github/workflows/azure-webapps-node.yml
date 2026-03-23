@@ -1,0 +1,38 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches:
+      - main  # Trigger deployment on push to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
+
+      - name: Copy files via SCP
+        run: |
+          # Syncing files to a specific directory on the VM
+          scp -r ./* ${{ secrets.VM_USERNAME }}@${{ secrets.VM_IP }}:/home/${{ secrets.VM_USERNAME }}/my-app
+
+      - name: Execute Remote Commands via SSH
+        run: |
+          ssh ${{ secrets.VM_USERNAME }}@${{ secrets.VM_IP }} << 'EOF'
+            cd /home/${{ secrets.VM_USERNAME }}/my-app
+            
+            # Example: Restarting a service (adjust based on your app)
+            # npm install --production
+            # pm2 restart my-app || pm2 start index.js --name my-app
+            
+            echo "Deployment successful!"
+          EOF
